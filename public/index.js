@@ -12,6 +12,7 @@ fetch("/api/transaction")
     populateTotal();
     populateTable();
     populateChart();
+
   });
 
 function populateTotal() {
@@ -19,23 +20,25 @@ function populateTotal() {
   let total = transactions.reduce((total, t) => {
     return total + parseInt(t.value);
   }, 0);
+  let balance = Number(total/100).toFixed(2)
 
   let totalEl = document.querySelector("#total");
-  totalEl.textContent = total;
+  totalEl.textContent = balance;
 }
 
 function populateTable() {
   let tbody = document.querySelector("#tbody");
   tbody.innerHTML = "";
-
   transactions.forEach(transaction => {
     // create and populate a table row
     let tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${transaction.name}</td>
-      <td>${transaction.value}</td>
-    `;
 
+    tr.innerHTML = `
+    <td>${transaction.date}</td>
+    <td>${transaction.name}</td>
+    <td>$${Number((transaction.value)/100).toFixed(2)}</td>
+    <td>$${Number((transaction.balance)/100).toFixed(2)}</td>
+    `;
     tbody.appendChild(tr);
   });
 }
@@ -47,13 +50,13 @@ function populateChart() {
 
   // create date labels for chart
   let labels = reversed.map(t => {
-    let date = new Date(t.date);
+    let date = new Date(t.update);
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   });
 
   // create incremental values for chart
   let data = reversed.map(t => {
-    sum += parseInt(t.value);
+    sum += parseInt(t.value)/100;
     return sum;
   });
 
@@ -74,13 +77,14 @@ function populateChart() {
             backgroundColor: "#6666ff",
             data
         }]
-    }
+    },
   });
 }
 
 function sendTransaction(isAdding) {
   let nameEl = document.querySelector("#t-name");
   let amountEl = document.querySelector("#t-amount");
+  let totalEl = document.querySelector("#total");
   let errorEl = document.querySelector(".form .error");
 
   // validate form
@@ -91,18 +95,38 @@ function sendTransaction(isAdding) {
   else {
     errorEl.textContent = "";
   }
+ 
+  let currentTotal = parseFloat(totalEl.innerHTML)*100;
+  let deposit = parseInt(Math.round(amountEl.value*100)) || 0;  
+  if (!isAdding) {
+    deposit *= -1;
+  }
+ // console.log(currentTotal)
+ // console.log(deposit)
+  let balanceTotal = currentTotal + deposit
+  
+  const date = new Date();
+  const day = ('0' + date.getDate()).slice(-2)
+  const month = ('0' + (date.getMonth() + 1)).slice(-2)
+  const year = date.getFullYear()
+  const hour = ('0' + date.getHours()).slice(-2)
+  const minute = ('0' + date.getMinutes()).slice(-2)
+  const transactionDate = `${day}/${month}/${year} ${hour}:${minute}`;
+
+  capitalize = function(value){
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+  const name = capitalize(nameEl.value)
+ // console.log(name)
 
   // create record
   let transaction = {
-    name: nameEl.value,
-    value: amountEl.value,
-    date: new Date().toISOString()
+    date: transactionDate,
+    name: name,
+    value: deposit,
+    balance: balanceTotal,
+    update: new Date().toISOString()
   };
-
-  // if subtracting funds, convert amount to negative number
-  if (!isAdding) {
-    transaction.value *= -1;
-  }
 
   // add to beginning of current array of data
   transactions.unshift(transaction);
